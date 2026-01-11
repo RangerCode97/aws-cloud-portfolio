@@ -1,8 +1,17 @@
 ---
 Metadata:
   AWSToolsMetrics:
-    IaC_Generator: "arn:aws:cloudformation:us-east-1:500648861660:generatedTemplate/5280349a-7ed4-4193-8874-06073d2ea756"
+    IaC_Generator: "arn:aws:cloudformation:us-east-1:500648861660:generatedTemplate/b5446874-836b-4f6c-8817-fbeb0612835c"
 Resources:
+  EC2SubnetRouteTableAssociationTH:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    DeletionPolicy: "Retain"
+    Properties:
+      RouteTableId:
+        Ref: "EC2RouteTableEk"
+      SubnetId:
+        Ref: "EC2SubnetVA"
   Route53ResolverResolverRuleAssociation:
     UpdateReplacePolicy: "Retain"
     Type: "AWS::Route53Resolver::ResolverRuleAssociation"
@@ -12,7 +21,7 @@ Resources:
         Ref: "EC2VPC"
       ResolverRuleId: "rslvr-autodefined-rr-internet-resolver"
       Name: "System Rule Association"
-  EC2SubnetNetworkAclAssociationKo:
+  EC2SubnetNetworkAclAssociationK0:
     UpdateReplacePolicy: "Retain"
     Type: "AWS::EC2::SubnetNetworkAclAssociation"
     DeletionPolicy: "Retain"
@@ -20,16 +29,20 @@ Resources:
       NetworkAclId:
         Ref: "EC2NetworkAcl"
       SubnetId:
-        Ref: "EC2SubnetWb"
-  EC2SubnetNetworkAclAssociationPT:
+        Ref: "EC2Subnet"
+  EC2RouteKN:
     UpdateReplacePolicy: "Retain"
-    Type: "AWS::EC2::SubnetNetworkAclAssociation"
+    Type: "AWS::EC2::Route"
     DeletionPolicy: "Retain"
     Properties:
-      NetworkAclId:
-        Ref: "EC2NetworkAcl"
-      SubnetId:
-        Ref: "EC2SubnetAI"
+      RouteTableId:
+        Ref: "EC2RouteTableEk"
+      DestinationCidrBlock:
+        Fn::GetAtt:
+        - "EC2VPC"
+        - "CidrBlock"
+      GatewayId: "local"
+      VpcEndpointId: "local"
   EC2Subnet:
     UpdateReplacePolicy: "Retain"
     Type: "AWS::EC2::Subnet"
@@ -49,57 +62,16 @@ Resources:
       Tags:
       - Value: "allan-repo-vpc1-public-subnet2"
         Key: "Name"
-  EC2RouteAC:
+  EC2RouteIJ:
     UpdateReplacePolicy: "Retain"
     Type: "AWS::EC2::Route"
     DeletionPolicy: "Retain"
     Properties:
       DestinationIpv6CidrBlock: "2600:1f18:5767:ff00::/56"
       RouteTableId:
-        Ref: "EC2RouteTable"
+        Ref: "EC2RouteTableEk"
       GatewayId: "local"
       VpcEndpointId: "local"
-  EC2DHCPOptions:
-    UpdateReplacePolicy: "Retain"
-    Type: "AWS::EC2::DHCPOptions"
-    DeletionPolicy: "Retain"
-    Properties:
-      DomainName: "ec2.internal"
-      DomainNameServers:
-      - "AmazonProvidedDNS"
-      Tags: []
-  EC2Route:
-    UpdateReplacePolicy: "Retain"
-    Type: "AWS::EC2::Route"
-    DeletionPolicy: "Retain"
-    Properties:
-      RouteTableId:
-        Ref: "EC2RouteTable"
-      DestinationCidrBlock:
-        Fn::GetAtt:
-        - "EC2VPC"
-        - "CidrBlock"
-      GatewayId: "local"
-      VpcEndpointId: "local"
-  EC2SubnetEX:
-    UpdateReplacePolicy: "Retain"
-    Type: "AWS::EC2::Subnet"
-    DeletionPolicy: "Retain"
-    Properties:
-      MapPublicIpOnLaunch: false
-      EnableDns64: false
-      VpcId:
-        Ref: "EC2VPC"
-      AvailabilityZoneId: "use1-az2"
-      PrivateDnsNameOptionsOnLaunch:
-        EnableResourceNameDnsARecord: false
-        HostnameType: "ip-name"
-        EnableResourceNameDnsAAAARecord: false
-      CidrBlock: "10.0.2.0/24"
-      Ipv6Native: false
-      Tags:
-      - Value: "allan-repo-vpc1-private-subnet1"
-        Key: "Name"
   EC2SecurityGroup:
     UpdateReplacePolicy: "Retain"
     Type: "AWS::EC2::SecurityGroup"
@@ -127,6 +99,15 @@ Resources:
         IpProtocol: "-1"
         FromPort: -1
         ToPort: -1
+  EC2SubnetRouteTableAssociationMW:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    DeletionPolicy: "Retain"
+    Properties:
+      RouteTableId:
+        Ref: "EC2RouteTableEk"
+      SubnetId:
+        Ref: "EC2SubnetJp"
   EC2SubnetNetworkAclAssociation:
     UpdateReplacePolicy: "Retain"
     Type: "AWS::EC2::SubnetNetworkAclAssociation"
@@ -135,8 +116,17 @@ Resources:
       NetworkAclId:
         Ref: "EC2NetworkAcl"
       SubnetId:
-        Ref: "EC2SubnetEX"
-  EC2SubnetNetworkAclAssociationIk:
+        Ref: "EC2SubnetJp"
+  EC2SubnetRouteTableAssociationIQ:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    DeletionPolicy: "Retain"
+    Properties:
+      RouteTableId:
+        Ref: "EC2RouteTableV4"
+      SubnetId:
+        Ref: "EC2SubnetLQ"
+  EC2SubnetNetworkAclAssociationU6:
     UpdateReplacePolicy: "Retain"
     Type: "AWS::EC2::SubnetNetworkAclAssociation"
     DeletionPolicy: "Retain"
@@ -144,8 +134,19 @@ Resources:
       NetworkAclId:
         Ref: "EC2NetworkAcl"
       SubnetId:
-        Ref: "EC2Subnet"
-  EC2SubnetWb:
+        Ref: "EC2SubnetVA"
+  EC2RouteRn:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::Route"
+    DeletionPolicy: "Retain"
+    Properties:
+      DestinationIpv6CidrBlock: "::/0"
+      RouteTableId:
+        Ref: "EC2RouteTableV4"
+      GatewayId:
+        Ref: "EC2InternetGateway"
+      VpcEndpointId: "igw-001fbc18d15b90cb9"
+  EC2SubnetVA:
     UpdateReplacePolicy: "Retain"
     Type: "AWS::EC2::Subnet"
     DeletionPolicy: "Retain"
@@ -164,6 +165,122 @@ Resources:
       Tags:
       - Value: "allan-repo-vpc1-private-subnet2"
         Key: "Name"
+  EC2NatGateway:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::NatGateway"
+    DeletionPolicy: "Retain"
+    Properties:
+      ConnectivityType: "public"
+      VpcId: "vpc-037688fcde471f5ee"
+      AvailabilityZoneAddresses:
+      - AvailabilityZoneId: "use1-az1"
+        AvailabilityZone: "us-east-1d"
+        AllocationIds:
+        - "eipalloc-045db4ed7b7cccd84"
+      AvailabilityMode: "regional"
+      Tags:
+      - Value: "allan-repo-vpc1-ngw"
+        Key: "Name"
+  EC2RouteTableEk:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::RouteTable"
+    DeletionPolicy: "Retain"
+    Properties:
+      VpcId:
+        Ref: "EC2VPC"
+      Tags:
+      - Value: "allan-vpc-vpc1-privateRT"
+        Key: "Name"
+  EC2RouteTableDI:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::RouteTable"
+    DeletionPolicy: "Retain"
+    Properties:
+      VpcId:
+        Ref: "EC2VPC"
+  EC2SubnetJp:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::Subnet"
+    DeletionPolicy: "Retain"
+    Properties:
+      MapPublicIpOnLaunch: false
+      EnableDns64: false
+      VpcId:
+        Ref: "EC2VPC"
+      AvailabilityZoneId: "use1-az2"
+      PrivateDnsNameOptionsOnLaunch:
+        EnableResourceNameDnsARecord: false
+        HostnameType: "ip-name"
+        EnableResourceNameDnsAAAARecord: false
+      CidrBlock: "10.0.2.0/24"
+      Ipv6Native: false
+      Tags:
+      - Value: "allan-repo-vpc1-private-subnet1"
+        Key: "Name"
+  EC2RouteHM:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::Route"
+    DeletionPolicy: "Retain"
+    Properties:
+      DestinationIpv6CidrBlock: "2600:1f18:5767:ff00::/56"
+      RouteTableId:
+        Ref: "EC2RouteTableDI"
+      GatewayId: "local"
+      VpcEndpointId: "local"
+  EC2RouteRU:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::Route"
+    DeletionPolicy: "Retain"
+    Properties:
+      RouteTableId:
+        Ref: "EC2RouteTableV4"
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId:
+        Ref: "EC2InternetGateway"
+      VpcEndpointId: "igw-001fbc18d15b90cb9"
+  EC2DHCPOptions:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::DHCPOptions"
+    DeletionPolicy: "Retain"
+    Properties:
+      DomainName: "ec2.internal"
+      DomainNameServers:
+      - "AmazonProvidedDNS"
+      Tags: []
+  EC2Route:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::Route"
+    DeletionPolicy: "Retain"
+    Properties:
+      RouteTableId:
+        Ref: "EC2RouteTable"
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId:
+        Ref: "EC2InternetGateway"
+      VpcEndpointId: "igw-001fbc18d15b90cb9"
+  EC2RouteU6:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::Route"
+    DeletionPolicy: "Retain"
+    Properties:
+      DestinationIpv6CidrBlock: "2600:1f18:5767:ff00::/56"
+      RouteTableId:
+        Ref: "EC2RouteTableV4"
+      GatewayId: "local"
+      VpcEndpointId: "local"
+  EC2RouteWu:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::Route"
+    DeletionPolicy: "Retain"
+    Properties:
+      RouteTableId:
+        Ref: "EC2RouteTable"
+      DestinationCidrBlock:
+        Fn::GetAtt:
+        - "EC2VPC"
+        - "CidrBlock"
+      GatewayId: "local"
+      VpcEndpointId: "local"
   EC2VPCDHCPOptionsAssociation:
     UpdateReplacePolicy: "Retain"
     Type: "AWS::EC2::VPCDHCPOptionsAssociation"
@@ -185,7 +302,71 @@ Resources:
       Tags:
       - Value: "allan-repo-vpc1"
         Key: "Name"
-  EC2SubnetAI:
+  EC2RouteTable:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::RouteTable"
+    DeletionPolicy: "Retain"
+    Properties:
+      VpcId:
+        Ref: "EC2VPC"
+  EC2RouteQe:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::Route"
+    DeletionPolicy: "Retain"
+    Properties:
+      RouteTableId:
+        Ref: "EC2RouteTableV4"
+      DestinationCidrBlock:
+        Fn::GetAtt:
+        - "EC2VPC"
+        - "CidrBlock"
+      GatewayId: "local"
+      VpcEndpointId: "local"
+  EC2InternetGateway:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::InternetGateway"
+    DeletionPolicy: "Retain"
+    Properties:
+      Tags:
+      - Value: "allan-repo-igw"
+        Key: "Name"
+  EC2RouteUg:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::Route"
+    DeletionPolicy: "Retain"
+    Properties:
+      NatGatewayId:
+        Ref: "EC2NatGateway"
+      RouteTableId:
+        Ref: "EC2RouteTableEk"
+      DestinationCidrBlock: "0.0.0.0/0"
+  EC2SubnetRouteTableAssociation:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    DeletionPolicy: "Retain"
+    Properties:
+      RouteTableId:
+        Ref: "EC2RouteTableV4"
+      SubnetId:
+        Ref: "EC2Subnet"
+  EC2NetworkAcl:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::NetworkAcl"
+    DeletionPolicy: "Retain"
+    Properties:
+      VpcId:
+        Ref: "EC2VPC"
+      Tags: []
+  EC2SubnetNetworkAclAssociationDP:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::SubnetNetworkAclAssociation"
+    DeletionPolicy: "Retain"
+    Properties:
+      NetworkAclId:
+        Ref: "EC2NetworkAcl"
+      SubnetId:
+        Ref: "EC2SubnetLQ"
+  EC2SubnetLQ:
     UpdateReplacePolicy: "Retain"
     Type: "AWS::EC2::Subnet"
     DeletionPolicy: "Retain"
@@ -205,29 +386,16 @@ Resources:
       Tags:
       - Value: "allan-repo-vpc1-public-subnet1"
         Key: "Name"
-  EC2RouteTable:
+  EC2RouteBp:
     UpdateReplacePolicy: "Retain"
-    Type: "AWS::EC2::RouteTable"
+    Type: "AWS::EC2::Route"
     DeletionPolicy: "Retain"
     Properties:
-      VpcId:
-        Ref: "EC2VPC"
-  EC2InternetGateway:
-    UpdateReplacePolicy: "Retain"
-    Type: "AWS::EC2::InternetGateway"
-    DeletionPolicy: "Retain"
-    Properties:
-      Tags:
-      - Value: "allan-repo-igw"
-        Key: "Name"
-  EC2NetworkAcl:
-    UpdateReplacePolicy: "Retain"
-    Type: "AWS::EC2::NetworkAcl"
-    DeletionPolicy: "Retain"
-    Properties:
-      VpcId:
-        Ref: "EC2VPC"
-      Tags: []
+      DestinationIpv6CidrBlock: "2600:1f18:5767:ff00::/56"
+      RouteTableId:
+        Ref: "EC2RouteTable"
+      GatewayId: "local"
+      VpcEndpointId: "local"
   EC2SubnetCidrBlock:
     UpdateReplacePolicy: "Retain"
     Type: "AWS::EC2::SubnetCidrBlock"
@@ -235,4 +403,27 @@ Resources:
     Properties:
       Ipv6CidrBlock: "2600:1f18:5767:ff00::/56"
       SubnetId:
-        Ref: "EC2SubnetAI"
+        Ref: "EC2SubnetLQ"
+  EC2RouteF3:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::Route"
+    DeletionPolicy: "Retain"
+    Properties:
+      RouteTableId:
+        Ref: "EC2RouteTableDI"
+      DestinationCidrBlock:
+        Fn::GetAtt:
+        - "EC2VPC"
+        - "CidrBlock"
+      GatewayId: "local"
+      VpcEndpointId: "local"
+  EC2RouteTableV4:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::EC2::RouteTable"
+    DeletionPolicy: "Retain"
+    Properties:
+      VpcId:
+        Ref: "EC2VPC"
+      Tags:
+      - Value: "allan-repo-vpc1-publicRT"
+        Key: "Name"

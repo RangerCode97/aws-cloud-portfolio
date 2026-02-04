@@ -1,62 +1,98 @@
 # aws-cloud-portfolio
 
-This repository contains a production-style AWS environment deployed entirely using Infrastructure-as-Code (CloudFormation).
+This repository contains a production-style AWS environment deployed using Infrastructure as Code (IaC).  
+The goal of this project is to demonstrate how to design, deploy, and operate **secure private workloads**
+in AWS using real-world architectural and security patterns.
 
-It demonstrates how to securely operate backend services in private subnets while allowing controlled administrative access through a bastion host — a common pattern in real-world cloud environments.
+This environment is intentionally designed to mirror how backend systems are deployed in production:
+private by default, tightly controlled administrative access, auditable changes, and clean teardown.
 
-##Architecture
-This project deploys a two-tier AWS architecture inside a dedicated VPC.
+---
+
+## Problem Statement
+
+Design an AWS environment that:
+
+- Keeps workloads fully private and inaccessible from the public internet
+- Enforces least-privilege access at the network and IAM layers
+- Allows controlled administrative access without exposing management ports
+- Supports outbound internet access for patching and updates
+- Is fully reproducible and removable using Infrastructure as Code
+
+---
+
+## Solution Overview
+
+This project deploys a **multi-AZ, two-tier AWS architecture** inside a dedicated VPC using CloudFormation.
+
+The architecture consists of:
+
+- A single VPC (10.0.0.0/16)
+- Two Availability Zones within the same AWS region
+- Public subnets used only for controlled access and egress
+- Private subnets hosting backend workloads
+- No direct inbound access to private resources
+- Centralized logging, monitoring, and encryption
+
+---
+
+## Architecture
+
+### Network Design
 
 The environment includes:
-- Two public subnets
-- Two private subnets
-- An Internet Gateway for inbound traffic
-- A NAT Gateway for private subnet outbound access
-- A Bastion Host EC2 in a public subnet
-- A Backend EC2 instance in a private subnet
 
-The backend server is intentionally not exposed to the internet. All administrative access flows through the bastion host, enforcing a secure access boundary.
+- Two public subnets (one per AZ)
+- Two private subnets (one per AZ)
+- An Internet Gateway attached to the VPC
+- A NAT Gateway to allow outbound-only internet access from private subnets
+- Separate route tables for public and private subnets
 
-##Security Model
-Security is enforced at multiple layers:
+### Compute
 
-- The Bastion Host security group only allows SSH (22) from my IP
-- The Private EC2 instance has no public IP
-- The Private EC2 security group only allows SSH from the Bastion Host’s security group
-- The private subnet routes outbound traffic through a NAT Gateway
+- Bastion access is provided without exposing inbound management ports
+- Private EC2 instances are deployed in private subnets
+- Private instances are not assigned public IP addresses
+- Workloads are designed to support future Auto Scaling integration
 
-This ensures the backend system cannot be reached directly from the internet while still allowing controlled administration and outbound connectivity.
+---
 
-##Deployment and Validation
-The entire environment is deployed using CloudFormation templates located in the infra/ directory.
+## Security Model
+
+Security is enforced in multiple layers:
+
+### Network Controls
+- Private subnets have no direct route to the internet
+- Outbound traffic from private workloads flows through a NAT Gateway
+- Security groups restrict traffic to only required sources
+- No inbound management ports exposed to the internet
+
+### Identity and Access Management
+- EC2 instances use IAM roles instead of static credentials
+- IAM permissions are scoped to the minimum required access
+- Systems Manager (SSM) is used for administrative access where applicable
+
+### Logging and Monitoring
+- CloudTrail is enabled to audit API and configuration changes
+- VPC Flow Logs capture network traffic metadata
+- CloudWatch alarms monitor instance health and CPU utilization
+
+### Data Protection
+- EBS volumes are encrypted at rest
+- Encrypted storage allows safe recovery and redeployment of instances
+
+---
+
+## Deployment
+
+All infrastructure is deployed using CloudFormation templates located in the `infra/` directory.
 
 To deploy:
-aws cloudformation deploy --template-file main.yaml --stack-name secure-two-tier --capabilities CAPABILITY_NAMED_IAM
 
-After deployment:
-- The bastion host receives a public IP
-- The private EC2 instance is reachable only through the bastion
-- Direct SSH access to the private EC2 from the internet fails as expected
+```bash
+aws cloudformation deploy \
+  --template-file main.yaml \
+  --stack-name secure-multi-az-environment \
+  --capabilities CAPABILITY_NAMED_IAM
 
-##Cost Awareness
-When you are finished using the stack resources, all resources can be removed by deleting the CloudFormation stack, ensuring no ongoing charges. 
-
-##What I learned
-This project gave me hands-on experience with:
-
-- Designing secure AWS network topologies
-- Implementing bastion-based access patterns
-- Deploying private workloads using NAT Gateways
-- Writing and troubleshooting CloudFormation templates
-- Validating access controls in a live AWS environment
-
-##Next Steps
-Future improvements:
-- Add Application Load Balancer
-- Add Auto Scaling Group
-- Add CI/CD pipeline
-- Convert infrastructure to Terraform
-
-## Architecture Diagram
-![Architecture Diagram](diagrams/architecture.png)
 

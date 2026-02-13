@@ -1,25 +1,42 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: JAN12 - ALB (HTTP only) using existing VPC/Subnets from Jan10
+Description: >
+  Project2 - Clean VPC (2 public, 2 private), IGW, single-AZ NAT, SSM role,
+  Launch Template + Private ASG (refactored: no hardcoding)
 
 Parameters:
-  VpcId:
-    Type: AWS::EC2::VPC::Id
-
-  AlbSubnet1:
-    Type: AWS::EC2::Subnet::Id
-    Description: Public subnet in AZ-A (for ALB)
-
-  AlbSubnet2:
-    Type: AWS::EC2::Subnet::Id
-    Description: Public subnet in AZ-B (for ALB)
-
-  WebSubnetId:
-    Type: AWS::EC2::Subnet::Id
-    Description: Subnet for the web instance (use PUBLIC subnet if no NAT; PRIVATE subnet if you have NAT)
-
-  MyIpCidr:
+  ProjectName:
     Type: String
-    Description: Your public IP in CIDR format (e.g., 1.2.3.4/32). Used for optional SSH.
+    Default: Project2
+    Description: Name prefix for resource tags/names
+
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnet1Cidr:
+    Type: String
+    Default: 10.0.1.0/24
+  PublicSubnet2Cidr:
+    Type: String
+    Default: 10.0.2.0/24
+
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: 10.0.101.0/24
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: 10.0.102.0/24
+
+  # Set this to YOUR IP /32 if you choose to allow SSH to the bastion.
+  AllowedSshCidr:
+    Type: String
+    Default: 108.95.132.218/32
+
+  EnableBastionSsh:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: If true, allows SSH (22) into Bastion from AllowedSshCidr. Prefer SSM instead.
 
   InstanceType:
     Type: String
@@ -27,95 +44,279 @@ Parameters:
 
   LatestAmiId:
     Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
-    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
+    Description: Amazon Linux 2023 latest AMI via SSM Parameter
+
+Conditions:
+  UseBastionSsh: !Equals [!Ref EnableBastionSsh, "true"]
 
 Resources:
-  AlbSecurityGroup:
+  # ----------------------------
+  # Networking: VPC + IGW
+  # ----------------------------
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-vpc"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-igw"
+
+  VpcIgwAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # ----------------------------
+  # Subnets (2 AZs)
+  # ----------------------------
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet1Cidr
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-az1"
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet2Cidr
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-az2"
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnet1Cidr
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-az1"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnet2Cidr
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-az2"
+
+  # ----------------------------
+  # Route Tables
+  # ----------------------------
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-rt"
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcIgwAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RtAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RtAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-rt"
+
+  PrivateSubnet1RtAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RtAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # ----------------------------
+  # NAT (single AZ) + private default route
+  # ----------------------------
+  NatEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-nat-eip"
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEip.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      ConnectivityType: public
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-nat"
+
+  PrivateDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  # ----------------------------
+  # Security Groups
+  # ----------------------------
+  BastionSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow HTTP from internet to ALB
-      VpcId: !Ref VpcId
+      GroupDescription: !Sub "${ProjectName} bastion SG (SSH optional; prefer SSM)"
+      VpcId: !Ref VPC
       SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
+        - !If
+          - UseBastionSsh
+          - IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: !Ref AllowedSshCidr
+          - !Ref AWS::NoValue
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
           CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-bastion-sg"
 
-  WebSecurityGroup:
+  PrivateInstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow HTTP from ALB; optional SSH from My IP
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          SourceSecurityGroupId: !Ref AlbSecurityGroup
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: !Ref MyIpCidr
+      GroupDescription: !Sub "${ProjectName} private instances SG"
+      VpcId: !Ref VPC
+      # No inbound by default (SSM access doesn't require inbound rules)
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-sg"
 
-  WebInstance:
-    Type: AWS::EC2::Instance
+  # ----------------------------
+  # IAM for EC2 SSM (and optional CW agent)
+  # ----------------------------
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
     Properties:
-      InstanceType: !Ref InstanceType
-      ImageId: !Ref LatestAmiId
-      SubnetId: !Ref WebSubnetId
-      SecurityGroupIds:
-        - !Ref WebSecurityGroup
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          set -xe
-          yum update -y
-          yum install -y nginx
-          systemctl enable nginx
-          echo "JAN12 ALB TEST OK - $(hostname)" > /usr/share/nginx/html/index.html
-          systemctl start nginx
+      RoleName: !Sub "${ProjectName}-ec2-ssm-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
 
-  TargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
     Properties:
-      VpcId: !Ref VpcId
-      Name: jan12-tg
-      Port: 80
-      Protocol: HTTP
-      TargetType: instance
-      Targets:
-        - Id: !Ref WebInstance
-          Port: 80
-      HealthCheckProtocol: HTTP
-      HealthCheckPath: /
-      Matcher:
-        HttpCode: "200-399"
+      InstanceProfileName: !Sub "${ProjectName}-ec2-profile"
+      Roles:
+        - !Ref EC2InstanceRole
 
-  LoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+  # ----------------------------
+  # Launch Template + ASG (private)
+  # ----------------------------
+  PrivateLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
     Properties:
-      Name: jan12-alb
-      Scheme: internet-facing
-      Type: application
-      Subnets:
-        - !Ref AlbSubnet1
-        - !Ref AlbSubnet2
-      SecurityGroups:
-        - !Ref AlbSecurityGroup
+      LaunchTemplateName: !Sub "${ProjectName}-private-lt"
+      LaunchTemplateData:
+        ImageId: !Ref LatestAmiId
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Name: !Ref EC2InstanceProfile
+        SecurityGroupIds:
+          - !Ref PrivateInstanceSecurityGroup
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: 20
+              VolumeType: gp3
+              Encrypted: true
+              DeleteOnTermination: true
+        MetadataOptions:
+          HttpTokens: required
+          HttpEndpoint: enabled
 
-  ListenerHTTP:
-    Type: AWS::ElasticLoadBalancingV2::Listener
+  PrivateAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      LoadBalancerArn: !Ref LoadBalancer
-      Port: 80
-      Protocol: HTTP
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroup
+      AutoScalingGroupName: !Sub "${ProjectName}-private-asg"
+      VPCZoneIdentifier:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      MinSize: "2"
+      MaxSize: "4"
+      DesiredCapacity: "2"
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 300
+      LaunchTemplate:
+        LaunchTemplateId: !Ref PrivateLaunchTemplate
+        Version: !GetAtt PrivateLaunchTemplate.LatestVersionNumber
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-asg-instance"
+          PropagateAtLaunch: true
 
 Outputs:
-  AlbDnsName:
-    Description: Open in browser (http://...)
-    Value: !GetAtt LoadBalancer.DNSName
-
-  WebInstanceId:
-    Value: !Ref WebInstance
+  VpcId:
+    Value: !Ref VPC
+  PublicSubnets:
+    Value: !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2]]
+  PrivateSubnets:
+    Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
+  NatGatewayId:
+    Value: !Ref NatGateway
+  PrivateAsgName:
+    Value: !Ref PrivateAutoScalingGroup

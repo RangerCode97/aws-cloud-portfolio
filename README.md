@@ -139,6 +139,13 @@ This ensures:
 - Encrypted storage enables safe redeployment
 
 ---
+## Security Controls/Encryption
+
+EBS encryption-by-default enabled at the account level (effective date)
+
+ASG Launch Template enforces encrypted EBS volumes
+
+Note: Instances created prior to enabling the control may have unencrypted root volumes; remediation approach is documented (snapshot → encrypted copy → replace volume) but not executed to avoid disrupting the current lab environment
 
 ## Security Principles Applied
 
